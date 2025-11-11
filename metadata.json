@@ -1,0 +1,5 @@
+{
+  "name": "Chef BOT WhatsApp Chatbot",
+  "description": "A friendly and knowledgeable master chef chatbot that helps users discover, save, and watch recipes in their preferred language, simulating a WhatsApp chat experience.",
+  "requestFramePermissions": []
+}
