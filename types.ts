@@ -5,6 +5,7 @@ export enum ChatState {
   SELECTING_CUISINE,
   AWAITING_DISH_INPUT,
   SHOWING_RECIPE,
+  ENDED,
 }
 
 export interface Option {

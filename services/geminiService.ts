@@ -41,22 +41,14 @@ export const fetchRecipe = async (dish: string, language: string): Promise<Omit<
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: `You are Chef Board, a world-class master chef. Use your search tool to find the most accurate and up-to-date information for a "${dish}" recipe. Provide a complete, expertly crafted recipe in ${language}. Your tone should be warm, professional, knowledgeable, and engaging. IMPORTANT: Your response MUST be a single, valid JSON object that follows this exact structure: {"recipeName": "string", "description": "string", "ingredients": ["string"], "instructions": ["string"]}. Do not include any text or formatting outside of this JSON object.`,
+            contents: `You are Chef BOT, a world-class master chef. Provide a complete, expertly crafted recipe for "${dish}" in ${language}. Your tone should be warm, professional, knowledgeable, and engaging.`,
             config: {
-                tools: [{googleSearch: {}}],
+                responseMimeType: "application/json",
+                responseSchema: recipeSchema,
             },
         });
         
-        let text = response.text.trim();
-        // The model might return the JSON inside a markdown code block, so we strip it.
-        const jsonMatch = text.match(/```(json)?\n([\s\S]*?)\n```/);
-        if (jsonMatch && jsonMatch[2]) {
-            text = jsonMatch[2];
-        }
-
-        if (!text.trim().startsWith('{')) {
-            throw new Error("Invalid recipe data received from API.");
-        }
+        const text = response.text.trim();
         const recipeData = JSON.parse(text);
 
         return recipeData;
@@ -93,21 +85,31 @@ export const generateDishImage = async (dish: string): Promise<string> => {
 
 export const fetchSources = async (dish: string, language: string): Promise<VideoSearchResult> => {
     try {
-        const prompt = `You are a "Sources" helper for a recipe chatbot. For the recipe "${dish}", find exactly 3 high-quality, relevant sources.
+        const prompt = `You are an expert source finder for a recipe chatbot, Chef BOT. Your task is to find sources for the recipe "${dish}". You must follow these rules with extreme precision.
 
-**Rules:**
-1.  **Sources:** Find sources in ${language} (or English). Sources can be YouTube video tutorials or food blog pages.
-2.  **Quantity:** Return exactly 3 sources.
-3.  **Relevance:** All sources must be for the specific recipe "${dish}". No unrelated content.
-4.  **Quality:** Links must be working, from trusted YouTube channels or cooking blogs.
-5.  **Fallback:** If you cannot find 3 exact matches, find 1-2 closely related sources (e.g., how to make a key ingredient, a major variation of the dish).
-6.  **Output Format:** Respond ONLY with a valid JSON object. Do not include any other text.
+**CRITICAL RULES:**
 
-**JSON Structure:**
-- If you find 3 exact matches, use: \`{"exactMatches": [{"title": "...", "url": "..."}, ...]}}\`
-- If you cannot find 3 exact matches, use: \`{"relatedMatches": [{"title": "Related: ...", "url": "..."}, ...]}}\`
+1.  **URL Validity:** You MUST ONLY provide URLs that are 100% working. Each URL must be:
+    - Active and public (not private, not deleted).
+    - Clickable and lead to the correct page.
+    - NOT a broken link (404 error).
+    - NOT a YouTube channel homepage.
+    - NOT a YouTube playlist link.
+    - If you have any doubt about a link's validity, DO NOT include it.
 
-Find sources for "${dish}" and return the JSON.`;
+2.  **Source Relevance:** The source MUST be a direct match for the recipe "${dish}". It can be a YouTube tutorial video or a trusted cooking blog page. No unrelated content.
+
+3.  **Quantity:** Provide a maximum of 3 valid links. Do not provide more. Do not include duplicates.
+
+4.  **No Valid Links Found:** If you cannot find any working, relevant links that meet ALL the above criteria, you MUST respond with \`{"noMatches": true}\`. Do not invent or provide fake links.
+
+5.  **Output Format:** Respond ONLY with a single, valid JSON object. Do not add any text before or after the JSON.
+    - For exact matches: \`{"exactMatches": [{"title": "...", "url": "..."}, ...]}}\`
+    - If no exact matches but related matches exist: \`{"relatedMatches": [{"title": "Related: ...", "url": "..."}, ...]}}\`
+    - If absolutely no working links are found: \`{"noMatches": true}\`
+
+Find up to 3 sources for "${dish}" in ${language} (or English if not available) now.`;
+        
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -142,7 +144,7 @@ export const getGeneralResponse = async (query: string, language: string): Promi
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: `You are Chef Board, a helpful master chef. Use your search tool to find the most accurate and up-to-date information to answer the user's question. Answer in a friendly and helpful tone in ${language}. Question: "${query}"`,
+            contents: `You are Chef BOT, a helpful master chef. Use your search tool to find the most accurate and up-to-date information to answer the user's question. Answer in a friendly and helpful tone in ${language}. Question: "${query}"`,
             config: {
                 tools: [{googleSearch: {}}]
             },
@@ -158,7 +160,7 @@ export const startChatWithRecipe = (recipe: Recipe, language: string): Chat => {
     const chat = ai.chats.create({
       model: 'gemini-2.5-flash',
       config: {
-        systemInstruction: `You are Chef Board, a friendly and knowledgeable master chef. The user is currently viewing a recipe for ${recipe.recipeName}. Your role is to answer their questions about this specific recipe. Be helpful and provide clear, concise answers in ${language}. Here is the recipe for your reference: Ingredients: ${recipe.ingredients.join(', ')}; Instructions: ${recipe.instructions.join(' ')}`,
+        systemInstruction: `You are Chef BOT, a friendly and knowledgeable master chef. The user is currently viewing a recipe for ${recipe.recipeName}. Your role is to answer their questions about this specific recipe. Be helpful and provide clear, concise answers in ${language}. Here is the recipe for your reference: Ingredients: ${recipe.ingredients.join(', ')}; Instructions: ${recipe.instructions.join(' ')}`,
       },
     });
     return chat;

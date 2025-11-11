@@ -107,8 +107,7 @@ const App: React.FC = () => {
             }
             addMessage({ sender: 'user', type: 'text', content: t('saveRecipe') });
             setTimeout(() => {
-              addMessage({ sender: 'bot', type: 'text', content: t('recipeSaved', currentRecipe.recipeName) });
-              setChatState(ChatState.AWAITING_DISH_INPUT);
+              addMessage({ sender: 'bot', type: 'text', content: t('recipeSaved') });
             }, 500);
         } else if (value === 'view_sources' && currentRecipe) {
             addMessage({ sender: 'user', type: 'text', content: t('viewSources') });
@@ -119,12 +118,12 @@ const App: React.FC = () => {
                 setMessages(prev => prev.filter(m => m.type !== 'loading'));
 
                 if (result.type === 'exact' && result.sources.length > 0) {
-                    const links = result.sources.map(source => `${source.title}\n${source.url}`).join('\n\n');
-                    const content = `${t('sourcesLink')}\n\n${links}`;
+                    const links = result.sources.map((source, index) => `${index + 1}. ${source.title} – ${source.url}`).join('\n');
+                    const content = `${t('sourcesLink')}\n${links}`;
                     addMessage({ sender: 'bot', type: 'text', content: content });
                 } else if (result.type === 'related' && result.sources.length > 0) {
-                    const links = result.sources.map(source => `${source.title}\n${source.url}`).join('\n\n');
-                    const content = `${t('noExactMatches')}\n\n${links}`;
+                    const links = result.sources.map((source, index) => `${index + 1}. ${source.title} – ${source.url}`).join('\n');
+                    const content = `${t('noExactMatches')}\n${links}`;
                     addMessage({ sender: 'bot', type: 'text', content: content });
                 } else {
                     addMessage({ sender: 'bot', type: 'text', content: t('sourcesNotFound') });
@@ -135,8 +134,19 @@ const App: React.FC = () => {
                 addMessage({ sender: 'bot', type: 'text', content: t('sourcesNotFound') });
             } finally {
                 setIsLoading(false);
-                setChatState(ChatState.AWAITING_DISH_INPUT);
             }
+        } else if (value === 'search_another') {
+            addMessage({ sender: 'user', type: 'text', content: t('yesSearchAnother') });
+            setTimeout(() => {
+                addMessage({ sender: 'bot', type: 'text', content: t('whatDish_short') });
+                setChatState(ChatState.AWAITING_DISH_INPUT);
+            }, 500);
+        } else if (value === 'end_chat') {
+            addMessage({ sender: 'user', type: 'text', content: t('noImDone') });
+            setTimeout(() => {
+                addMessage({ sender: 'bot', type: 'text', content: t('goodbye') });
+                setChatState(ChatState.ENDED);
+            }, 500);
         }
     }
   };
@@ -222,6 +232,19 @@ const App: React.FC = () => {
                 });
                 setChatState(ChatState.SHOWING_RECIPE);
             }, 500);
+
+            setTimeout(() => {
+                addMessage({
+                    sender: 'bot',
+                    type: 'options',
+                    content: t('askAnotherRecipe'),
+                    options: [
+                        { label: t('yesSearchAnother'), value: 'search_another' },
+                        { label: t('noImDone'), value: 'end_chat' },
+                    ]
+                });
+            }, 1000);
+
         } catch (error) {
             console.error(error);
             setMessages(prev => prev.filter(m => m.type !== 'loading'));
@@ -236,6 +259,8 @@ const App: React.FC = () => {
                     options: alternatives.map(alt => ({ label: alt, value: alt }))
                 });
                 setChatState(ChatState.SELECTING_CUISINE); // Re-purpose state to select a suggested dish
+            } else {
+                 setChatState(ChatState.AWAITING_DISH_INPUT);
             }
         } finally {
             setIsLoading(false);
@@ -248,9 +273,10 @@ const App: React.FC = () => {
     addMessage({ sender: 'bot', type: 'text', content: t('recipeRemoved', recipeName) });
   };
   
-  const isInputDisabled = isLoading || (chatState !== ChatState.AWAITING_DISH_INPUT && chatState !== ChatState.SHOWING_RECIPE);
+  const isInputDisabled = isLoading || (chatState !== ChatState.AWAITING_DISH_INPUT && chatState !== ChatState.SHOWING_RECIPE) || chatState === ChatState.ENDED;
   
   const getPlaceholder = () => {
+    if (chatState === ChatState.ENDED) return "Chat has ended.";
     if (isInputDisabled) return "Select an option above";
     if (chatState === ChatState.SHOWING_RECIPE) return t('recipePlaceholder');
     return t('textPlaceholder');
@@ -263,7 +289,7 @@ const App: React.FC = () => {
           <div className="flex items-center">
             <ChefBoardLogo />
             <div>
-              <h1 className="text-lg font-bold">Chef Board</h1>
+              <h1 className="text-lg font-bold">Chef BOT</h1>
               <p className="text-sm opacity-80">online</p>
             </div>
           </div>
@@ -280,7 +306,7 @@ const App: React.FC = () => {
             {messages.map((msg) => (
               <ChatMessage key={msg.id} message={msg}>
                 {msg.type === 'options' && msg.options && (
-                   <OptionSelector options={msg.options} onSelect={(value) => handleOptionSelect(value)} disabled={isLoading || (chatState !== ChatState.SELECTING_LANGUAGE && chatState !== ChatState.SELECTING_CUISINE)} />
+                   <OptionSelector options={msg.options} onSelect={(value) => handleOptionSelect(value)} disabled={isLoading || (chatState !== ChatState.SHOWING_RECIPE && chatState !== ChatState.SELECTING_CUISINE)} />
                 )}
                 {msg.type === 'horizontal-options' && msg.options && (
                    <HorizontalSelector options={msg.options} onSelect={(value) => handleOptionSelect(value)} disabled={isLoading || (chatState !== ChatState.SELECTING_LANGUAGE && chatState !== ChatState.SELECTING_CUISINE)} />
