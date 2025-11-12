@@ -121,10 +121,6 @@ const App: React.FC = () => {
                     const links = result.sources.map((source, index) => `${index + 1}. ${source.title} – ${source.url}`).join('\n');
                     const content = `${t('sourcesLink')}\n${links}`;
                     addMessage({ sender: 'bot', type: 'text', content: content });
-                } else if (result.type === 'related' && result.sources.length > 0) {
-                    const links = result.sources.map((source, index) => `${index + 1}. ${source.title} – ${source.url}`).join('\n');
-                    const content = `${t('noExactMatches')}\n${links}`;
-                    addMessage({ sender: 'bot', type: 'text', content: content });
                 } else {
                     addMessage({ sender: 'bot', type: 'text', content: t('sourcesNotFound') });
                 }

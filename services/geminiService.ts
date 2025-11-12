@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Modality, Chat } from "@google/genai";
 import { Recipe, Source, VideoSearchResult } from '../types';
 
@@ -85,30 +84,32 @@ export const generateDishImage = async (dish: string): Promise<string> => {
 
 export const fetchSources = async (dish: string, language: string): Promise<VideoSearchResult> => {
     try {
-        const prompt = `You are an expert source finder for a recipe chatbot, Chef BOT. Your task is to find sources for the recipe "${dish}". You must follow these rules with extreme precision.
+        const prompt = `You are an expert YouTube link verifier for a recipe chatbot, Chef BOT. Your only job is to find up to 3 high-quality, working, and relevant YouTube video links for the recipe "${dish}". You must follow these rules with extreme precision.
 
-**CRITICAL RULES:**
+**CRITICAL RULES FOR YOUTUBE LINK VALIDATION:**
 
-1.  **URL Validity:** You MUST ONLY provide URLs that are 100% working. Each URL must be:
-    - Active and public (not private, not deleted).
-    - Clickable and lead to the correct page.
-    - NOT a broken link (404 error).
-    - NOT a YouTube channel homepage.
-    - NOT a YouTube playlist link.
-    - If you have any doubt about a link's validity, DO NOT include it.
+1.  **USE ONLY youtu.be FORMAT:** All YouTube links MUST be in the short \`https://youtu.be/VIDEOID\` format.
+    -   **Correct:** \`https://youtu.be/exampleVideoID\`
+    -   **Incorrect:** \`https://www.youtube.com/watch?v=exampleVideoID\`, any redirect URLs, google/cloud URLs, or long tracking URLs.
+    -   You MUST convert any valid YouTube link you find into this short format.
 
-2.  **Source Relevance:** The source MUST be a direct match for the recipe "${dish}". It can be a YouTube tutorial video or a trusted cooking blog page. No unrelated content.
+2.  **100% WORKING & RELEVANT LINKS GUARANTEE:** A link is only acceptable if it meets ALL of these conditions:
+    -   It is a real, existing YouTube video.
+    -   The link opens correctly and is not private, deleted, unavailable, or restricted.
+    -   The video content is a direct tutorial or recipe for "${dish}".
+    -   It is NOT a playlist, channel homepage, or unrelated vlog.
+    -   If you have any doubt that a link is not perfect, DO NOT include it.
 
-3.  **Quantity:** Provide a maximum of 3 valid links. Do not provide more. Do not include duplicates.
+3.  **ACTION IF NO VALID VIDEOS EXIST:**
+    -   If you cannot find any YouTube videos that meet all the above rules, you MUST respond with: \`{"noMatches": true}\`.
+    -   Do NOT create fake links just to fill the list. It is better to return nothing than to return a bad link.
 
-4.  **No Valid Links Found:** If you cannot find any working, relevant links that meet ALL the above criteria, you MUST respond with \`{"noMatches": true}\`. Do not invent or provide fake links.
+4.  **REQUIRED OUTPUT FORMAT:**
+    -   You must respond ONLY with a single, valid JSON object. Do not add any text before or after it.
+    -   For valid links: \`{"exactMatches": [{"title": "Video Title", "url": "https://youtu.be/VIDEOID"}, ...]}\`
+    -   If no valid links are found: \`{"noMatches": true}\`
 
-5.  **Output Format:** Respond ONLY with a single, valid JSON object. Do not add any text before or after the JSON.
-    - For exact matches: \`{"exactMatches": [{"title": "...", "url": "..."}, ...]}}\`
-    - If no exact matches but related matches exist: \`{"relatedMatches": [{"title": "Related: ...", "url": "..."}, ...]}}\`
-    - If absolutely no working links are found: \`{"noMatches": true}\`
-
-Find up to 3 sources for "${dish}" in ${language} (or English if not available) now.`;
+Now, perform your task for the recipe "${dish}", considering the preferred language ${language} (but English is also acceptable).`;
         
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -129,8 +130,6 @@ Find up to 3 sources for "${dish}" in ${language} (or English if not available) 
         
         if (result.exactMatches && Array.isArray(result.exactMatches) && result.exactMatches.length > 0) {
             return { type: 'exact', sources: result.exactMatches };
-        } else if (result.relatedMatches && Array.isArray(result.relatedMatches) && result.relatedMatches.length > 0) {
-            return { type: 'related', sources: result.relatedMatches };
         } else {
             return { type: 'none', sources: [] };
         }

@@ -28,7 +28,7 @@ export interface Source {
 }
 
 export interface VideoSearchResult {
-  type: 'exact' | 'related' | 'none';
+  type: 'exact' | 'none';
   sources: Source[];
 }
 
